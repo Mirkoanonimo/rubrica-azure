@@ -7,21 +7,35 @@ pool:
 variables:
   - group: rubrica-web-app-vars
 
-steps:
-  # Terraform
-  - task: TerraformInstaller@0
-    inputs:
-      terraformVersion: '1.9.8'
+stages:
+  - stage: Test
+    jobs:
+      - job: TestVariables
+        steps:
+          - script: |
+              echo "Testing variable access..."
+              echo "APP_SERVICE_NAME: $(APP_SERVICE_NAME)"
+              echo "AZURE_REGION: $(AZURE_REGION)"
+              echo "RESOURCE_GROUP: $(RESOURCE_GROUP)"
+            displayName: 'Debug Variables'
   
-  - task: TerraformTaskV3@3
-    inputs:
-      provider: 'azurerm'
-      command: 'init'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-  
-  - task: TerraformTaskV3@3
-    inputs:
-      provider: 'azurerm'
-      command: 'apply'
-      environmentServiceNameAzureRM: '$(AZURE_SUBSCRIPTION)'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
+  - stage: Infrastructure
+    jobs:
+      - job: Terraform
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: '1.9.8'
+          
+          - task: TerraformTaskV3@3
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)'
+          
+          - task: TerraformTaskV3@3
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              environmentServiceNameAzureRM: '$(AZURE_SUBSCRIPTION)'
+              workingDirectory: '$(System.DefaultWorkingDirectory)'
