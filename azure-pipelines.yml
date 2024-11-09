@@ -2,49 +2,57 @@ trigger:
   - main
 
 pool:
-  vmImage: 'ubuntu-latest'  # Ora possiamo usare questo perché il progetto è pubblico
+  vmImage: 'ubuntu-latest'
 
-steps:
-  # Step 1: Verifica variabili
-  - bash: |
-      echo "Testing variables connection..."
-      echo "Resource Group: $(RESOURCE_GROUP)"
-      echo "Region: $(AZURE_REGION)"
-    displayName: 'Variables Check'
-    
-  # Step 2: Installa Terraform
-  - task: TerraformInstaller@0
-    displayName: 'Install Terraform'
-    inputs:
-      terraformVersion: '1.9.8'
-  
-  # Step 3: Terraform Init
-  - task: TerraformCLI@0
-    displayName: 'Terraform Init'
-    inputs:
-      command: 'init'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      backendType: 'azurerm'
-      backendServiceArm: 'Azure-Rubrica'
-      ensureBackend: true
-      backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
-      backendAzureRmStorageAccountName: 'storubricabackend'
-      backendAzureRmContainerName: 'tfstate'
-      backendAzureRmKey: 'terraform.tfstate'
-  
-  # Step 4: Terraform Plan
-  - task: TerraformCLI@0
-    displayName: 'Terraform Plan'
-    inputs:
-      command: 'plan'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'
-      publishPlanResults: 'Rubrica-Plan'
-  
-  # Step 5: Terraform Apply
-  - task: TerraformCLI@0
-    displayName: 'Terraform Apply'
-    inputs:
-      command: 'apply'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'
+variables:
+  - group: 'rubrica-web-app-vars'
+
+jobs:
+  - job: DeployInfrastructure
+    displayName: 'Deploy Infrastructure'
+    steps:
+      # Step 1: Verifica variabili
+      - bash: |
+          echo "Testing variables connection..."
+          echo "Resource Group: $(RESOURCE_GROUP)"
+          echo "Region: $(AZURE_REGION)"
+        displayName: 'Variables Check'
+      
+      # Step 2: Installa Terraform
+      - task: TerraformInstaller@0
+        displayName: 'Install Terraform'
+        inputs:
+          terraformVersion: '1.9.8'
+      
+      # Step 3: Terraform Init
+      - task: TerraformCLI@0
+        displayName: 'Terraform Init'
+        inputs:
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          backendType: 'azurerm'
+          backendServiceArm: 'Azure-Rubrica'
+          ensureBackend: true
+          backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: 'storubricabackend'
+          backendAzureRmContainerName: 'tfstate'
+          backendAzureRmKey: 'terraform.tfstate'
+      
+      # Step 4: Terraform Plan
+      - task: TerraformCLI@0
+        displayName: 'Terraform Plan'
+        inputs:
+          command: 'plan'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          environmentServiceName: 'Azure-Rubrica'
+          publishPlanResults: 'Rubrica-Plan'
+      
+      # Step 5: Terraform Apply
+      - task: TerraformCLI@0
+        displayName: 'Terraform Apply'
+        condition: succeeded()
+        inputs:
+          command: 'apply'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          environmentServiceName: 'Azure-Rubrica'
+          commandOptions: '-auto-approve'
