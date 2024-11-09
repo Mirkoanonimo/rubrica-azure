@@ -1,8 +1,7 @@
 trigger:
   - main
 
-pool:
-  name: 'Default'    # Usa solo il pool, senza demands specifici
+pool: Default    # Specifico il pool Default dove ora si trova il nostro agente
 
 variables:
   - group: 'rubrica-web-app-vars'
