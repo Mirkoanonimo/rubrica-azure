@@ -7,35 +7,36 @@ pool:
 variables:
   - group: rubrica-web-app-vars
 
-stages:
-  - stage: Test
-    jobs:
-      - job: TestVariables
-        steps:
-          - script: |
-              echo "Testing variable access..."
-              echo "APP_SERVICE_NAME: $(APP_SERVICE_NAME)"
-              echo "AZURE_REGION: $(AZURE_REGION)"
-              echo "RESOURCE_GROUP: $(RESOURCE_GROUP)"
-            displayName: 'Debug Variables'
-  
-  - stage: Infrastructure
-    jobs:
-      - job: Terraform
-        steps:
-          - task: TerraformInstaller@0
-            inputs:
-              terraformVersion: '1.9.8'
-          
-          - task: TerraformTaskV3@3
-            inputs:
-              provider: 'azurerm'
-              command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)'
-          
-          - task: TerraformTaskV3@3
-            inputs:
-              provider: 'azurerm'
-              command: 'apply'
-              environmentServiceNameAzureRM: '$(AZURE_SUBSCRIPTION)'
-              workingDirectory: '$(System.DefaultWorkingDirectory)'
+steps:
+  - task: TerraformInstaller@0
+    displayName: 'Install Terraform'
+    inputs:
+      terraformVersion: '1.9.8'
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform Init'
+    inputs:
+      command: 'init'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      backendType: 'azurerm'
+      backendServiceArm: '$(AZURE_SUBSCRIPTION)'
+      ensureBackend: true
+      backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
+      backendAzureRmStorageAccountName: 'storubricabackend'
+      backendAzureRmContainerName: 'tfstate'
+      backendAzureRmKey: 'terraform.tfstate'
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform Plan'
+    inputs:
+      command: 'plan'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      environmentServiceName: '$(AZURE_SUBSCRIPTION)'
+      publishPlanResults: 'Rubrica-Plan'
+
+  - task: TerraformCLI@0
+    displayName: 'Terraform Apply'
+    inputs:
+      command: 'apply'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      environmentServiceName: '$(AZURE_SUBSCRIPTION)'
