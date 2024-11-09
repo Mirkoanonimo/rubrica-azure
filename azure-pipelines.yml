@@ -1,42 +1,59 @@
+# Solo un trigger sul main per risparmiare esecuzioni
 trigger:
   - main
 
+# Configurazione per piano gratuito
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
   - group: rubrica-web-app-vars
 
-steps:
-  - task: TerraformInstaller@0
-    displayName: 'Install Terraform'
-    inputs:
-      terraformVersion: '1.9.8'
-
-  - task: TerraformCLI@0
-    displayName: 'Terraform Init'
-    inputs:
-      command: 'init'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      backendType: 'azurerm'
-      backendServiceArm: 'Azure-Rubrica'  # Nome esatto della service connection creata
-      ensureBackend: true
-      backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
-      backendAzureRmStorageAccountName: 'storubricabackend'
-      backendAzureRmContainerName: 'tfstate'
-      backendAzureRmKey: 'terraform.tfstate'
-
-  - task: TerraformCLI@0
-    displayName: 'Terraform Plan'
-    inputs:
-      command: 'plan'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'  # Nome esatto della service connection creata
-      publishPlanResults: 'Rubrica-Plan'
-
-  - task: TerraformCLI@0
-    displayName: 'Terraform Apply'
-    inputs:
-      command: 'apply'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'  # Nome esatto della service connection creata
+# Un unico job sequenziale
+jobs:
+  - job: Infrastructure
+    timeoutInMinutes: 30  # Limitiamo il timeout per non sprecare minuti gratuiti
+    steps:
+      # Step 1: Verifica variabili
+      - bash: |
+          echo "Testing variables connection..."
+          echo "Resource Group: $(RESOURCE_GROUP)"
+          echo "Region: $(AZURE_REGION)"
+        displayName: 'Variables Check'
+        
+      # Step 2: Installa Terraform
+      - task: TerraformInstaller@0
+        displayName: 'Install Terraform'
+        inputs:
+          terraformVersion: '1.9.8'
+      
+      # Step 3: Terraform Init
+      - task: TerraformCLI@0
+        displayName: 'Terraform Init'
+        inputs:
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          backendType: 'azurerm'
+          backendServiceArm: 'Azure-Rubrica'
+          ensureBackend: true
+          backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: 'storubricabackend'
+          backendAzureRmContainerName: 'tfstate'
+          backendAzureRmKey: 'terraform.tfstate'
+      
+      # Step 4: Terraform Plan con risultati pubblicati
+      - task: TerraformCLI@0
+        displayName: 'Terraform Plan'
+        inputs:
+          command: 'plan'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          environmentServiceName: 'Azure-Rubrica'
+          publishPlanResults: 'Rubrica-Plan'
+      
+      # Step 5: Terraform Apply
+      - task: TerraformCLI@0
+        displayName: 'Terraform Apply'
+        inputs:
+          command: 'apply'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          environmentServiceName: 'Azure-Rubrica'
