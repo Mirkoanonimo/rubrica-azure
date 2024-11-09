@@ -2,9 +2,7 @@ trigger:
   - main
 
 pool:
-  name: 'Default'    # Specifica il pool dove si trova il nostro agente
-  demands:
-    - agent.name -equals rubrica-agent-01  # Specifica esattamente quale agente usare
+  name: 'Default'    # Usa solo il pool, senza demands specifici
 
 variables:
   - group: 'rubrica-web-app-vars'
