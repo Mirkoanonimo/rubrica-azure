@@ -19,7 +19,7 @@ steps:
       command: 'init'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
       backendType: 'azurerm'
-      backendServiceArm: '$(AZURE_SUBSCRIPTION)'
+      backendServiceArm: 'Azure-Rubrica'  # Nome esatto della service connection creata
       ensureBackend: true
       backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
       backendAzureRmStorageAccountName: 'storubricabackend'
@@ -31,7 +31,7 @@ steps:
     inputs:
       command: 'plan'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: '$(AZURE_SUBSCRIPTION)'
+      environmentServiceName: 'Azure-Rubrica'  # Nome esatto della service connection creata
       publishPlanResults: 'Rubrica-Plan'
 
   - task: TerraformCLI@0
@@ -39,4 +39,4 @@ steps:
     inputs:
       command: 'apply'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: '$(AZURE_SUBSCRIPTION)'
+      environmentServiceName: 'Azure-Rubrica'  # Nome esatto della service connection creata
