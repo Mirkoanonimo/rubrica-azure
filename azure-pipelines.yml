@@ -1,6 +1,9 @@
 trigger:
   - main
 
+pool:
+  vmImage: 'ubuntu-latest'  # Ora possiamo usare questo perché il progetto è pubblico
+
 steps:
   # Step 1: Verifica variabili
   - bash: |
