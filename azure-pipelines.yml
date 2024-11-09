@@ -1,7 +1,7 @@
 trigger:
   - main
 
-pool: Default    # Specifico il pool Default dove ora si trova il nostro agente
+pool: Default
 
 variables:
   - group: 'rubrica-web-app-vars'
@@ -20,14 +20,14 @@ steps:
     inputs:
       terraformVersion: '1.9.8'
   
-  # Step 3: Terraform Init
+  # Step 3: Terraform Init con Service Principal
   - task: TerraformCLI@0
     displayName: 'Terraform Init'
     inputs:
       command: 'init'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
       backendType: 'azurerm'
-      backendServiceArm: 'Azure-Rubrica'
+      backendServiceArm: 'Azure-Rubrica'  # Nome della Service Connection
       ensureBackend: true
       backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
       backendAzureRmStorageAccountName: 'storubricabackend'
@@ -40,7 +40,7 @@ steps:
     inputs:
       command: 'plan'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'
+      environmentServiceName: 'Azure-Rubrica'  # Usa la stessa Service Connection
       publishPlanResults: 'Rubrica-Plan'
   
   # Step 5: Terraform Apply
@@ -50,5 +50,5 @@ steps:
     inputs:
       command: 'apply'
       workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'
+      environmentServiceName: 'Azure-Rubrica'  # Usa la stessa Service Connection
       commandOptions: '-auto-approve'
