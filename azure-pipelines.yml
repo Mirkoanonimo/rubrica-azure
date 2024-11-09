@@ -1,0 +1,27 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: rubrica-web-app-vars
+
+steps:
+  # Terraform
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: '1.9.8'
+  
+  - task: TerraformTaskV3@3
+    inputs:
+      provider: 'azurerm'
+      command: 'init'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+  
+  - task: TerraformTaskV3@3
+    inputs:
+      provider: 'azurerm'
+      command: 'apply'
+      environmentServiceNameAzureRM: '$(AZURE_SUBSCRIPTION)'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
