@@ -12,10 +12,6 @@ steps:
      echo "===== Testing variables connection ====="
      echo "Resource Group: [$(RESOURCE_GROUP)]"
      echo "Region: [$(AZURE_REGION)]"
-     echo "Length AZURE_REGION: ${#AZURE_REGION}"
-     echo "Region value without quotes: ${AZURE_REGION}"
-     echo "Region value with quotes: '${AZURE_REGION}'"
-     echo "Subscription: [$(AZURE_SUBSCRIPTION)]"
      echo "===== Directory content ====="
      ls -la $(System.DefaultWorkingDirectory)/terraform
    displayName: 'Variables Check'
@@ -40,16 +36,7 @@ steps:
      backendAzureRmContainerName: 'tfstate'
      backendAzureRmKey: 'terraform.tfstate'
 
-# Step 4: Import Resource Group
- - task: TerraformCLI@0
-   displayName: 'Import Resource Group'
-   inputs:
-     command: 'import'
-     workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-     environmentServiceName: 'Azure-Rubrica'
-     commandOptions: 'azurerm_resource_group.rg_rubrica /subscriptions/$(AZURE_SUBSCRIPTION)/resourceGroups/$(RESOURCE_GROUP)'
-
-# Step 5: Terraform Plan
+# Step 4: Terraform Plan
  - task: TerraformCLI@0
    displayName: 'Terraform Plan'
    inputs:
@@ -58,7 +45,7 @@ steps:
      environmentServiceName: 'Azure-Rubrica'
      commandOptions: '-input=false -var="azure_region=westeurope" -var="azure_subscription=$(AZURE_SUBSCRIPTION)" -var="resource_group=$(RESOURCE_GROUP)" -var="database_username=$(DATABASE_USERNAME)" -var="database_password=$(DATABASE_PASSWORD)" -var="database_name=$(DATABASE_NAME)" -var="app_service_name=$(APP_SERVICE_NAME)" -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)"'
 
-# Step 6: Terraform Apply
+# Step 5: Terraform Apply
  - task: TerraformCLI@0
    displayName: 'Terraform Apply'
    condition: succeeded()
