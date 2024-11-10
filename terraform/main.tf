@@ -6,11 +6,11 @@ terraform {
     }
   }
 
-   backend "azurerm" {
+  backend "azurerm" {
     resource_group_name  = "rg-rubrica-dev"
     storage_account_name = "storubricabackend"
     container_name      = "tfstate"
-    key                = "terraform.tfstate"
+    key                 = "terraform.tfstate"
   }
 }
 
@@ -19,30 +19,25 @@ provider "azurerm" {
   subscription_id = var.azure_subscription
 }
 
-# Create a resource group
-resource "azurerm_resource_group" "rg_rubrica" {
-  name     = var.resource_group
-  location = var.azure_region
-  tags = {
-    environment = "development"
-    project     = "rubrica"
-  }
+# Use existing resource group
+data "azurerm_resource_group" "rg_rubrica" {
+  name = var.resource_group
 }
 
-# Create the App Service Plan
+# App Service Plan (F1: Free Tier)
 resource "azurerm_service_plan" "app_service_plan" {
   name                = var.app_service_plan_name
-  resource_group_name = azurerm_resource_group.rg_rubrica.name
-  location            = azurerm_resource_group.rg_rubrica.location
+  resource_group_name = data.azurerm_resource_group.rg_rubrica.name
+  location            = data.azurerm_resource_group.rg_rubrica.location
   os_type            = "Linux"
   sku_name           = "F1"
 }
 
-# Create Web App with Database
+# Web App with PostgreSQL Database
 resource "azurerm_linux_web_app" "webapp_with_db" {
   name                = var.app_service_name
-  location            = azurerm_resource_group.rg_rubrica.location
-  resource_group_name = azurerm_resource_group.rg_rubrica.name
+  resource_group_name = data.azurerm_resource_group.rg_rubrica.name
+  location            = data.azurerm_resource_group.rg_rubrica.location
   service_plan_id     = azurerm_service_plan.app_service_plan.id
 
   site_config {
