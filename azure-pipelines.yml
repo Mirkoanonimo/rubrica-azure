@@ -35,6 +35,7 @@ steps:
      backendAzureRmStorageAccountName: 'storubricabackend'
      backendAzureRmContainerName: 'tfstate'
      backendAzureRmKey: 'terraform.tfstate'
+     backendAzureRmResourceGroupLocation: 'westeurope'
 
 # Step 4: Terraform Plan
  - task: TerraformCLI@0
