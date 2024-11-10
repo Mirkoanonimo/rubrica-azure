@@ -7,11 +7,13 @@ variables:
   - group: 'rubrica-web-app-vars'
 
 steps:
-  # Step 1: Verifica variabili
+  # Step 1: Verifica variabili e directory
   - bash: |
       echo "Testing variables connection..."
       echo "Resource Group: $(RESOURCE_GROUP)"
       echo "Region: $(AZURE_REGION)"
+      echo "Listing terraform directory content:"
+      ls -la $(System.DefaultWorkingDirectory)/terraform
     displayName: 'Variables Check'
     
   # Step 2: Installa Terraform
@@ -20,14 +22,14 @@ steps:
     inputs:
       terraformVersion: '1.9.8'
   
-  # Step 3: Terraform Init con Service Principal
+  # Step 3: Terraform Init
   - task: TerraformCLI@0
     displayName: 'Terraform Init'
     inputs:
       command: 'init'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'  # Percorso aggiornato
       backendType: 'azurerm'
-      backendServiceArm: 'Azure-Rubrica'  # Nome della Service Connection
+      backendServiceArm: 'Azure-Rubrica'
       ensureBackend: true
       backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
       backendAzureRmStorageAccountName: 'storubricabackend'
@@ -39,8 +41,8 @@ steps:
     displayName: 'Terraform Plan'
     inputs:
       command: 'plan'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'  # Usa la stessa Service Connection
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'  # Percorso aggiornato
+      environmentServiceName: 'Azure-Rubrica'
       publishPlanResults: 'Rubrica-Plan'
   
   # Step 5: Terraform Apply
@@ -49,6 +51,6 @@ steps:
     condition: succeeded()
     inputs:
       command: 'apply'
-      workingDirectory: '$(System.DefaultWorkingDirectory)'
-      environmentServiceName: 'Azure-Rubrica'  # Usa la stessa Service Connection
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'  # Percorso aggiornato
+      environmentServiceName: 'Azure-Rubrica'
       commandOptions: '-auto-approve'
