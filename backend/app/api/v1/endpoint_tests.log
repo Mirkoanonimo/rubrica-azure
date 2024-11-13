@@ -1,0 +1,55 @@
+[ START ] Testing POST auth/register
+[ FAIL ] POST auth/register - Status code: , Expected: 201
+
+[ END ] Testing POST auth/register
+
+[ START ] Testing POST auth/login
+[ FAIL ] POST auth/login - Status code: , Expected: 200
+
+[ END ] Testing POST auth/login
+
+[ START ] Testing POST auth/password-reset
+[ FAIL ] POST auth/password-reset - Status code: , Expected: 202
+
+[ END ] Testing POST auth/password-reset
+
+[ START ] Testing PUT auth/password
+[ FAIL ] PUT auth/password - Status code: , Expected: 200
+
+[ END ] Testing PUT auth/password
+
+[ START ] Testing GET auth/me
+[ FAIL ] GET auth/me - Status code: , Expected: 200
+
+[ END ] Testing GET auth/me
+
+[ START ] Testing POST contacts
+[ FAIL ] POST contacts - Status code: , Expected: 201
+
+[ END ] Testing POST contacts
+
+[ START ] Testing GET contacts
+[ FAIL ] GET contacts - Status code: , Expected: 200
+
+[ END ] Testing GET contacts
+
+[ START ] Testing GET contacts/1
+[ FAIL ] GET contacts/1 - Status code: , Expected: 200
+
+[ END ] Testing GET contacts/1
+
+[ START ] Testing PUT contacts/1
+[ FAIL ] PUT contacts/1 - Status code: , Expected: 200
+
+[ END ] Testing PUT contacts/1
+
+[ START ] Testing DELETE contacts/1
+[ FAIL ] DELETE contacts/1 - Status code: , Expected: 204
+
+[ END ] Testing DELETE contacts/1
+
+[ START ] Testing POST contacts/search
+[ FAIL ] POST contacts/search - Status code: , Expected: 200
+
+[ END ] Testing POST contacts/search
+

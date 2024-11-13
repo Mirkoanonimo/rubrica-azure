@@ -1,57 +1,81 @@
 trigger:
- - main
+  - main
 
 pool: Default
 
 variables:
- - group: 'rubrica-web-app-vars'
+  - group: 'rubrica-web-app-vars'
 
 steps:
 # Step 1: Verifica variabili e directory con debug esteso
- - bash: |
-     echo "===== Testing variables connection ====="
-     echo "Resource Group: [$(RESOURCE_GROUP)]"
-     echo "Region: [$(AZURE_REGION)]"
-     echo "===== Directory content ====="
-     ls -la $(System.DefaultWorkingDirectory)/terraform
-   displayName: 'Variables Check'
+  - bash: |
+      echo "===== Testing variables connection ====="
+      echo "Resource Group: [$(RESOURCE_GROUP)]"
+      echo "Region: [$(AZURE_REGION)]"
+      echo "SQL Server: [$(SQL_SERVER_NAME)]"
+      echo "Alert Email: [$(ALERT_EMAIL_ADDRESS)]"
+      echo "===== Directory content ====="
+      ls -la $(System.DefaultWorkingDirectory)/terraform
+    displayName: 'Variables Check'
 
 # Step 2: Installa Terraform
- - task: TerraformInstaller@0
-   displayName: 'Install Terraform'
-   inputs:
-     terraformVersion: '1.9.8'
+  - task: TerraformInstaller@0
+    displayName: 'Install Terraform'
+    inputs:
+      terraformVersion: '1.9.8'
 
 # Step 3: Terraform Init
- - task: TerraformCLI@0
-   displayName: 'Terraform Init'
-   inputs:
-     command: 'init'
-     workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-     backendType: 'azurerm'
-     backendServiceArm: 'Azure-Rubrica'
-     ensureBackend: true
-     backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
-     backendAzureRmStorageAccountName: 'storubricabackend'
-     backendAzureRmContainerName: 'tfstate'
-     backendAzureRmKey: 'terraform.tfstate'
-     backendAzureRmResourceGroupLocation: 'westeurope'
+  - task: TerraformCLI@0
+    displayName: 'Terraform Init'
+    inputs:
+      command: 'init'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+      backendType: 'azurerm'
+      backendServiceArm: 'Azure-Rubrica'
+      ensureBackend: true
+      backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
+      backendAzureRmStorageAccountName: 'storubricabackend'
+      backendAzureRmContainerName: 'tfstate'
+      backendAzureRmKey: 'terraform.tfstate'
+      backendAzureRmResourceGroupLocation: 'westeurope'
 
 # Step 4: Terraform Plan
- - task: TerraformCLI@0
-   displayName: 'Terraform Plan'
-   inputs:
-     command: 'plan'
-     workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-     environmentServiceName: 'Azure-Rubrica'
-     commandOptions: '-input=false -var="azure_region=westeurope" -var="azure_subscription=$(AZURE_SUBSCRIPTION)" -var="resource_group=$(RESOURCE_GROUP)" -var="database_username=$(DATABASE_USERNAME)" -var="database_password=$(DATABASE_PASSWORD)" -var="database_name=$(DATABASE_NAME)" -var="app_service_name=$(APP_SERVICE_NAME)" -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)"'
+  - task: TerraformCLI@0
+    displayName: 'Terraform Plan'
+    inputs:
+      command: 'plan'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+      environmentServiceName: 'Azure-Rubrica'
+      commandOptions: >-
+        -input=false 
+        -var="azure_region=westeurope" 
+        -var="azure_subscription=$(AZURE_SUBSCRIPTION)" 
+        -var="resource_group=$(RESOURCE_GROUP)" 
+        -var="database_username=$(DATABASE_USERNAME)" 
+        -var="database_password=$(DATABASE_PASSWORD)" 
+        -var="database_name=$(DATABASE_NAME)" 
+        -var="app_service_name=$(APP_SERVICE_NAME)" 
+        -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)" 
+        -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
+        -var="sql_server_name=$(SQL_SERVER_NAME)"
 
 # Step 5: Terraform Apply
- - task: TerraformCLI@0
-   displayName: 'Terraform Apply'
-   condition: succeeded()
-   inputs:
-     command: 'apply'
-     workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-     environmentServiceName: 'Azure-Rubrica'
-     commandOptions: '-auto-approve -var="azure_region=westeurope" -var="azure_subscription=$(AZURE_SUBSCRIPTION)" -var="resource_group=$(RESOURCE_GROUP)" -var="database_username=$(DATABASE_USERNAME)" -var="database_password=$(DATABASE_PASSWORD)" -var="database_name=$(DATABASE_NAME)" -var="app_service_name=$(APP_SERVICE_NAME)" -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)"'
+  - task: TerraformCLI@0
+    displayName: 'Terraform Apply'
+    condition: succeeded()
+    inputs:
+      command: 'apply'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+      environmentServiceName: 'Azure-Rubrica'
+      commandOptions: >-
+        -auto-approve 
+        -var="azure_region=westeurope" 
+        -var="azure_subscription=$(AZURE_SUBSCRIPTION)" 
+        -var="resource_group=$(RESOURCE_GROUP)" 
+        -var="database_username=$(DATABASE_USERNAME)" 
+        -var="database_password=$(DATABASE_PASSWORD)" 
+        -var="database_name=$(DATABASE_NAME)" 
+        -var="app_service_name=$(APP_SERVICE_NAME)" 
+        -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)" 
+        -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
+        -var="sql_server_name=$(SQL_SERVER_NAME)"
