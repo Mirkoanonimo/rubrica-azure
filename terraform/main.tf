@@ -65,14 +65,13 @@ resource "azurerm_mssql_server" "sql_server" {
   version                      = "12.0"
   administrator_login          = var.database_username
   administrator_login_password = var.database_password
-  public_network_access_enabled = false
+  public_network_access_enabled = true
 }
 
 resource "azurerm_mssql_database" "free_database" {
   name           = var.database_name
   server_id      = azurerm_mssql_server.sql_server.id
   collation      = "SQL_Latin1_General_CP1_CI_AS"
-  license_type   = "LicenseIncluded"
   max_size_gb    = 32
   sku_name       = "GP_S_Gen5_1"
   zone_redundant = false
