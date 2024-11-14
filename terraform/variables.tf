@@ -149,8 +149,3 @@ variable "key_vault_name" {
   default     = "kv-rubrica-dev"
 }
 
-variable "secret_key" {
-  description = "JWT Secret Key"
-  type        = string
-  sensitive   = true
-}

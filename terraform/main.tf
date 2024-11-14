@@ -232,9 +232,16 @@ resource "azurerm_key_vault" "rubrica_vault" {
 }
 
 # Segreti nel Key Vault
+# Generatore chiave JWT automatico
+resource "random_password" "jwt_secret" {
+  length  = 32
+  special = true
+}
+
+# Modifica del Key Vault Secret per usare la chiave generata
 resource "azurerm_key_vault_secret" "jwt_secret" {
   name         = "jwt-secret-key"
-  value        = var.secret_key
+  value        = random_password.jwt_secret.result
   key_vault_id = azurerm_key_vault.rubrica_vault.id
 
   depends_on = [
@@ -242,6 +249,7 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
     azurerm_key_vault_access_policy.backend_policy
   ]
 }
+
 
 
 # Accesso per Backend Web App
