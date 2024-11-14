@@ -132,7 +132,7 @@ stages:
           -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
           -var="sql_server_name=$(SQL_SERVER_NAME)"
 
-stage: KeyVaultSetup
+- stage: KeyVaultSetup
   dependsOn: Infrastructure
   jobs:
   - job: SetupSecrets
