@@ -37,7 +37,7 @@ resource "azurerm_service_plan" "app_service_plan" {
 }
 
 resource "azurerm_key_vault" "rubrica_vault" {
-  name                        = "kv-rubrica-${var.environment}"
+  name = "kv-rubrica-${var.environment}-new"
   location                    = data.azurerm_resource_group.rg_rubrica.location
   resource_group_name         = data.azurerm_resource_group.rg_rubrica.name
   enabled_for_disk_encryption = true
@@ -190,7 +190,7 @@ resource "azurerm_monitor_metric_alert" "vcore_alert" {
 
   criteria {
     metric_namespace = "Microsoft.Sql/servers/databases"
-    metric_name      = "vcore_usage_seconds"
+    metric_name      = "dtu_used"
     aggregation      = "Total"
     operator         = "GreaterThan"
     threshold        = 80000
