@@ -87,7 +87,7 @@ variable "app_service_plan_name" {
 variable "environment" {
   description = "Environment name (dev/prod)"
   type        = string
-  default     = "dev"
+  default     = "development"
   validation {
     condition     = contains(["development", "production"], var.environment)
     error_message = "Environment must be either 'development' or 'production'."
