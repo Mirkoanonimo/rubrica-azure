@@ -269,13 +269,13 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   ]
 }
 
-
+/*
 resource "azurerm_key_vault_secret" "db_password" {
   name         = "db-password"
   value        = var.database_password
   key_vault_id = azurerm_key_vault.rubrica_vault.id
 }
-
+*/
 # Accesso per Backend Web App
 resource "azurerm_key_vault_access_policy" "backend_policy" {
   key_vault_id = azurerm_key_vault.rubrica_vault.id
