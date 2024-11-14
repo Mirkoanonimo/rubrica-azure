@@ -190,10 +190,10 @@ resource "azurerm_monitor_metric_alert" "vcore_alert" {
 
   criteria {
     metric_namespace = "Microsoft.Sql/servers/databases"
-    metric_name      = "dtu_used"
+    metric_name      = "free_amount_consumed"
     aggregation      = "Total"
     operator         = "GreaterThan"
-    threshold        = 80000
+    threshold        = 75000
   }
 
   action {
