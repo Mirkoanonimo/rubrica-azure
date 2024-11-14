@@ -132,6 +132,8 @@ resource "azurerm_linux_web_app" "backend_webapp" {
     "DATABASE_SERVER"                     = azurerm_mssql_server.sql_server.fully_qualified_domain_name
     "DATABASE_USERNAME"                   = var.database_username
     "CORS_ORIGINS"                       = "https://${var.app_service_name}-frontend.azurewebsites.net"
+    "SECRET_KEY" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
+    "DATABASE_PASSWORD" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
   }
 }
 
@@ -149,22 +151,6 @@ resource "azurerm_key_vault_secret" "jwt_secret" {
   key_vault_id = azurerm_key_vault.rubrica_vault.id
 
   depends_on = [azurerm_key_vault_access_policy.backend_policy]
-}
-
-resource "azurerm_app_service_application_settings" "backend_settings" {
-  name                = azurerm_linux_web_app.backend_webapp.name
-  app_service_name    = azurerm_linux_web_app.backend_webapp.name
-  resource_group_name = azurerm_linux_web_app.backend_webapp.resource_group_name
-  
-  app_settings = {
-    "SECRET_KEY" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
-    "DATABASE_PASSWORD" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
-  }
-
-  depends_on = [
-    azurerm_key_vault_secret.jwt_secret,
-    azurerm_key_vault_access_policy.backend_policy
-  ]
 }
 
 resource "azurerm_linux_web_app" "frontend_webapp" {
@@ -193,11 +179,13 @@ resource "azurerm_linux_web_app" "frontend_webapp" {
   }
 }
 
-resource "azurerm_mssql_server_azure_ad_administrator" "sql_ad_admin" {
-  server_id               = azurerm_mssql_server.sql_server.id
-  login_username         = "AzureAD Admin"
-  object_id              = azurerm_linux_web_app.backend_webapp.identity[0].principal_id
-  tenant_id              = data.azurerm_client_config.current.tenant_id
+resource "azurerm_mssql_server_administrator" "sql_ad_admin" {
+  server_name         = azurerm_mssql_server.sql_server.name
+  resource_group_name = data.azurerm_resource_group.rg_rubrica.name
+  login              = "AzureAD Admin"
+  object_id          = azurerm_linux_web_app.backend_webapp.identity[0].principal_id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  azuread_authentication_only = false
 }
 
 resource "azurerm_monitor_action_group" "email_alert" {
