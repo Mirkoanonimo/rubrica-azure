@@ -49,10 +49,7 @@ resource "azurerm_key_vault" "rubrica_vault" {
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = data.azurerm_client_config.current.object_id
-
-    secret_permissions = [
-      "Get", "List", "Set", "Delete", "Recover", "Backup", "Restore"
-    ]
+    secret_permissions = ["Get", "List", "Set", "Delete", "Recover", "Backup", "Restore"]
   }
 }
 
@@ -99,6 +96,7 @@ resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
+# First create backend without secret references
 resource "azurerm_linux_web_app" "backend_webapp" {
   name                = "${var.app_service_name}-backend"
   resource_group_name = data.azurerm_resource_group.rg_rubrica.name
@@ -132,25 +130,64 @@ resource "azurerm_linux_web_app" "backend_webapp" {
     "DATABASE_SERVER"                     = azurerm_mssql_server.sql_server.fully_qualified_domain_name
     "DATABASE_USERNAME"                   = var.database_username
     "CORS_ORIGINS"                       = "https://${var.app_service_name}-frontend.azurewebsites.net"
-    "SECRET_KEY" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
-    "DATABASE_PASSWORD" = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
   }
 }
 
+# Then create access policy using backend identity
 resource "azurerm_key_vault_access_policy" "backend_policy" {
   key_vault_id = azurerm_key_vault.rubrica_vault.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = azurerm_linux_web_app.backend_webapp.identity[0].principal_id
-
   secret_permissions = ["Get", "List"]
 }
 
+# Create the secret
 resource "azurerm_key_vault_secret" "jwt_secret" {
   name         = "jwt-secret-key"
   value        = random_password.jwt_secret.result
   key_vault_id = azurerm_key_vault.rubrica_vault.id
+  depends_on   = [azurerm_key_vault_access_policy.backend_policy]
+}
 
-  depends_on = [azurerm_key_vault_access_policy.backend_policy]
+# Finally update backend settings with secret reference
+resource "azurerm_linux_web_app" "backend_webapp_settings" {
+  name                = azurerm_linux_web_app.backend_webapp.name
+  resource_group_name = azurerm_linux_web_app.backend_webapp.resource_group_name
+  location            = azurerm_linux_web_app.backend_webapp.location
+  service_plan_id     = azurerm_linux_web_app.backend_webapp.service_plan_id
+
+  site_config {
+    application_stack {
+      python_version = "3.9"
+    }
+    always_on = false
+    cors {
+      allowed_origins     = ["https://${var.app_service_name}-frontend.azurewebsites.net"]
+      support_credentials = true
+    }
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  app_settings = {
+    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "true"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT"      = "true"
+    "PYTHON_ENABLE_WORKER_MP"             = "true"
+    "WEBSITES_PORT"                       = "8000"
+    "ENVIRONMENT"                         = "production"
+    "DEBUG"                               = "false"
+    "DATABASE_TYPE"                       = "azure_sql"
+    "DATABASE_NAME"                       = azurerm_mssql_database.free_database.name
+    "DATABASE_SERVER"                     = azurerm_mssql_server.sql_server.fully_qualified_domain_name
+    "DATABASE_USERNAME"                   = var.database_username
+    "CORS_ORIGINS"                       = "https://${var.app_service_name}-frontend.azurewebsites.net"
+    "SECRET_KEY"                         = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
+    "DATABASE_PASSWORD"                  = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.jwt_secret.id})"
+  }
+
+  depends_on = [azurerm_key_vault_secret.jwt_secret]
 }
 
 resource "azurerm_linux_web_app" "frontend_webapp" {
