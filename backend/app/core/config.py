@@ -1,7 +1,10 @@
 # app/core/config.py
+import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
+from azure.keyvault.secrets import SecretClient
+from azure.identity import DefaultAzureCredential
 
 class Settings(BaseSettings):
     # App Configuration
@@ -61,6 +64,19 @@ class Settings(BaseSettings):
                 f"/{self.DATABASE_NAME}?driver=ODBC+Driver+18+for+SQL+Server"
                 f"&TrustServerCertificate=yes&encrypt=yes"
             )
+
+    @property
+    def get_secret_key(self) -> str:
+        """
+        Recupera SECRET_KEY da Azure Key Vault in produzione,
+        usa valore locale in development
+        """
+        if self.ENVIRONMENT == "production":
+            credential = DefaultAzureCredential()
+            vault_url = os.getenv("AZURE_KEY_VAULT_ENDPOINT")
+            client = SecretClient(vault_url=vault_url, credential=credential)
+            return client.get_secret("jwt-secret-key").value
+        return self.SECRET_KEY
 
     @property
     def IS_DEVELOPMENT(self) -> bool:

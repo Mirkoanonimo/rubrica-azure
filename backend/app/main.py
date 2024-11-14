@@ -1,21 +1,17 @@
-import time
+import time, os
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
-
 from app.core.config import settings
 from app.api.v1 import auth, contacts
-
-
 
 # Configurazione logging
 logging.basicConfig(
     level=logging.DEBUG if settings.IS_DEVELOPMENT else logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
 
 # Creazione app FastAPI con metadati migliorati
 app = FastAPI(
@@ -27,7 +23,12 @@ app = FastAPI(
 )
 
 # Configurazione CORS sicura
-origins = ["http://localhost:5173", "http://localhost:3000"] if settings.ENVIRONMENT == "development" else [settings.FRONTEND_URL]
+origins = (
+    ["http://localhost:5173", "http://localhost:3000"] 
+    if settings.ENVIRONMENT == "development" 
+    else [settings.FRONTEND_URL, f"https://{settings.AZURE_APP_SERVICE_NAME}-frontend.azurewebsites.net"]
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -108,6 +109,25 @@ async def test_db():
         return {
             "status": "database error",
             "detail": str(e) if settings.ENVIRONMENT == "development" else "Connection failed"
+        }
+
+# Test endpoint - inserisci qui, prima dei router
+@app.get("/api/v1/test-config", include_in_schema=False)
+async def test_config():
+    if settings.ENVIRONMENT != "development":
+        return JSONResponse(status_code=404)
+    
+    try:
+        return {
+            "key_vault_connected": settings.get_secret_key is not None,
+            "database_type": settings.DATABASE_TYPE,
+            "cors_origins": settings.CORS_ORIGINS,
+            "environment": settings.ENVIRONMENT,
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "key_vault_endpoint": os.getenv("AZURE_KEY_VAULT_ENDPOINT", "Not set")
         }
 
 # Inclusione dei router con prefisso versione

@@ -6,76 +6,234 @@ pool: Default
 variables:
   - group: 'rubrica-web-app-vars'
 
-steps:
-# Step 1: Verifica variabili e directory con debug esteso
-  - bash: |
-      echo "===== Testing variables connection ====="
-      echo "Resource Group: [$(RESOURCE_GROUP)]"
-      echo "Region: [$(AZURE_REGION)]"
-      echo "SQL Server: [$(SQL_SERVER_NAME)]"
-      echo "Alert Email: [$(ALERT_EMAIL_ADDRESS)]"
-      echo "===== Directory content ====="
-      ls -la $(System.DefaultWorkingDirectory)/terraform
-    displayName: 'Variables Check'
+stages:
+- stage: AgentCheck
+  displayName: 'Check Agent Requirements'
+  jobs:
+  - job: Diagnostics
+    steps:
+    - bash: |
+        echo "===== Checking Agent Requirements ====="
+        echo "Python Version:"
+        python3 --version || echo "Python3 not found"
+        pip3 --version || echo "Pip3 not found"
+        
+        echo -e "\nNode Version:"
+        node --version || echo "Node not found"
+        npm --version || echo "NPM not found"
+        
+        echo -e "\nSystem Info:"
+        uname -a
+        
+        echo -e "\nInstalled Tools:"
+        which python3 || echo "Python3 path not found"
+        which node || echo "Node path not found"
+        which npm || echo "NPM path not found"
+        which pip3 || echo "Pip3 path not found"
+        which git || echo "Git path not found"
+        which terraform || echo "Terraform path not found"
+        
+        echo -e "\nWorking Directory:"
+        pwd
+        ls -la
+      displayName: 'System Diagnostics'
 
-# Step 2: Installa Terraform
-  - task: TerraformInstaller@0
-    displayName: 'Install Terraform'
-    inputs:
-      terraformVersion: '1.9.8'
+- stage: Setup
+  displayName: 'Setup Environment'
+  dependsOn: AgentCheck
+  jobs:
+  - job: InstallDependencies
+    steps:
+    - bash: |
+        # Install Python if not present
+        if ! command -v python3 &> /dev/null; then
+          echo "Installing Python..."
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+        fi
+        
+        # Install Node.js if not present
+        if ! command -v node &> /dev/null; then
+          echo "Installing Node.js..."
+          curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+        fi
+        
+        # Install ODBC driver if not present
+        if ! command -v odbcinst &> /dev/null; then
+          echo "Installing ODBC driver..."
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+        fi
+      displayName: 'Install Required Tools'
 
-# Step 3: Terraform Init
-  - task: TerraformCLI@0
-    displayName: 'Terraform Init'
-    inputs:
-      command: 'init'
-      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-      backendType: 'azurerm'
-      backendServiceArm: 'Azure-Rubrica'
-      ensureBackend: true
-      backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
-      backendAzureRmStorageAccountName: 'storubricabackend'
-      backendAzureRmContainerName: 'tfstate'
-      backendAzureRmKey: 'terraform.tfstate'
-      backendAzureRmResourceGroupLocation: 'westeurope'
+- stage: Infrastructure
+  displayName: 'Deploy Infrastructure'
+  dependsOn: Setup
+  jobs:
+  - job: TerraformDeploy
+    steps:
+    - task: TerraformInstaller@0
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: '1.9.8'
 
-# Step 4: Terraform Plan
-  - task: TerraformCLI@0
-    displayName: 'Terraform Plan'
-    inputs:
-      command: 'plan'
-      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-      environmentServiceName: 'Azure-Rubrica'
-      commandOptions: >-
-        -input=false 
-        -var="azure_region=westeurope" 
-        -var="azure_subscription=$(AZURE_SUBSCRIPTION)" 
-        -var="resource_group=$(RESOURCE_GROUP)" 
-        -var="database_username=$(DATABASE_USERNAME)" 
-        -var="database_password=$(DATABASE_PASSWORD)" 
-        -var="database_name=$(DATABASE_NAME)" 
-        -var="app_service_name=$(APP_SERVICE_NAME)" 
-        -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)" 
-        -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
-        -var="sql_server_name=$(SQL_SERVER_NAME)"
+    - task: TerraformCLI@0
+      displayName: 'Terraform Init'
+      inputs:
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        backendType: 'azurerm'
+        backendServiceArm: 'Azure-Rubrica'
+        ensureBackend: true
+        backendAzureRmResourceGroupName: '$(RESOURCE_GROUP)'
+        backendAzureRmStorageAccountName: 'storubricabackend'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'terraform.tfstate'
+        backendAzureRmResourceGroupLocation: 'westeurope'
 
-# Step 5: Terraform Apply
-  - task: TerraformCLI@0
-    displayName: 'Terraform Apply'
-    condition: succeeded()
-    inputs:
-      command: 'apply'
-      workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-      environmentServiceName: 'Azure-Rubrica'
-      commandOptions: >-
-        -auto-approve 
-        -var="azure_region=westeurope" 
-        -var="azure_subscription=$(AZURE_SUBSCRIPTION)" 
-        -var="resource_group=$(RESOURCE_GROUP)" 
-        -var="database_username=$(DATABASE_USERNAME)" 
-        -var="database_password=$(DATABASE_PASSWORD)" 
-        -var="database_name=$(DATABASE_NAME)" 
-        -var="app_service_name=$(APP_SERVICE_NAME)" 
-        -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)" 
-        -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
-        -var="sql_server_name=$(SQL_SERVER_NAME)"
+    - task: TerraformCLI@0
+      displayName: 'Terraform Plan'
+      inputs:
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceName: 'Azure-Rubrica'
+        commandOptions: >-
+          -input=false
+          -var="azure_region=$(AZURE_REGION)"
+          -var="azure_subscription=$(AZURE_SUBSCRIPTION)"
+          -var="resource_group=$(RESOURCE_GROUP)"
+          -var="database_username=$(DATABASE_USERNAME)"
+          -var="database_password=$(DATABASE_PASSWORD)"
+          -var="database_name=$(DATABASE_NAME)"
+          -var="app_service_name=$(APP_SERVICE_NAME)"
+          -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)"
+          -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
+          -var="sql_server_name=$(SQL_SERVER_NAME)"
+
+    - task: TerraformCLI@0
+      displayName: 'Terraform Apply'
+      inputs:
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceName: 'Azure-Rubrica'
+        commandOptions: >-
+          -auto-approve
+          -var="azure_region=$(AZURE_REGION)"
+          -var="azure_subscription=$(AZURE_SUBSCRIPTION)"
+          -var="resource_group=$(RESOURCE_GROUP)"
+          -var="database_username=$(DATABASE_USERNAME)"
+          -var="database_password=$(DATABASE_PASSWORD)"
+          -var="database_name=$(DATABASE_NAME)"
+          -var="app_service_name=$(APP_SERVICE_NAME)"
+          -var="app_service_plan_name=$(APP_SERVICE_PLAN_NAME)"
+          -var="alert_email_address=$(ALERT_EMAIL_ADDRESS)"
+          -var="sql_server_name=$(SQL_SERVER_NAME)"
+
+stage: KeyVaultSetup
+  dependsOn: Infrastructure
+  jobs:
+  - job: SetupSecrets
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Setup Key Vault Secrets'
+      inputs:
+        azureSubscription: 'Azure-Rubrica'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Genera una chiave casuale sicura
+          SECRET_KEY=$(openssl rand -hex 32)
+          
+          # Salva nel Key Vault
+          az keyvault secret set --vault-name "kv-rubrica-dev" \
+                                --name "jwt-secret-key" \
+                                --value "$SECRET_KEY"
+          echo "===== Testing Key Vault Configuration ====="
+          
+          # Verifica esistenza Key Vault
+          echo "Checking Key Vault existence..."
+          az keyvault show --name $(key_vault_name) --resource-group $(RESOURCE_GROUP)
+          
+          # Verifica permessi
+          echo "Checking Key Vault permissions..."
+          az keyvault list --resource-group $(RESOURCE_GROUP) --query "[].{Name:name, AccessPolicies:properties.accessPolicies[].permissions}"
+          
+          # Verifica connessione Web App - Key Vault
+          echo "Checking Web App Identity..."
+          WEBAPP_IDENTITY=$(az webapp identity show --name $(BACKEND_APP_NAME) --resource-group $(RESOURCE_GROUP) --query principalId -o tsv)
+          echo "Web App Managed Identity: $WEBAPP_IDENTITY"
+          
+          # Verifica presenza segreti (senza mostrare i valori)
+          echo "Checking secrets existence..."
+          az keyvault secret list --vault-name $(key_vault_name) --query "[].id"
+
+- stage: Backend
+  displayName: 'Deploy Backend'
+  dependsOn: Infrastructure
+  jobs:
+  - job: BuildAndDeployBackend
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(PYTHON_VERSION)'
+        addToPath: true
+
+    - bash: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+      displayName: 'Install Python Dependencies'
+
+    - bash: |
+        # Crea il file .env per il backend
+        echo "ENVIRONMENT=production" > backend/.env
+        echo "DATABASE_TYPE=azure_sql" >> backend/.env
+        echo "DATABASE_NAME=$(DATABASE_NAME)" >> backend/.env
+        echo "DATABASE_USERNAME=$(DATABASE_USERNAME)" >> backend/.env
+        echo "DATABASE_PASSWORD=$(DATABASE_PASSWORD)" >> backend/.env
+        echo "SQL_SERVER_NAME=$(SQL_SERVER_NAME)" >> backend/.env
+        echo "FRONTEND_URL=https://$(FRONTEND_APP_NAME).azurewebsites.net" >> backend/.env
+      displayName: 'Create Backend Environment File'
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'Azure-Rubrica'
+        appName: '$(BACKEND_APP_NAME)'
+        package: 'backend/'
+        deploymentMethod: 'auto'
+
+- stage: Frontend
+  displayName: 'Deploy Frontend'
+  dependsOn: Backend
+  jobs:
+  - job: BuildAndDeployFrontend
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(NODE_VERSION)'
+      displayName: 'Install Node.js'
+
+    - bash: |
+        cd frontend
+        npm ci
+      displayName: 'Install Frontend Dependencies'
+
+    - bash: |
+        cd frontend
+        # Crea il file .env per il frontend
+        echo "VITE_API_URL=https://$(BACKEND_APP_NAME).azurewebsites.net" > .env
+      displayName: 'Create Frontend Environment File'
+
+    - bash: |
+        cd frontend
+        npm run build
+      displayName: 'Build Frontend'
+
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'Azure-Rubrica'
+        appName: '$(FRONTEND_APP_NAME)'
+        package: 'frontend/dist'
+        deploymentMethod: 'auto'

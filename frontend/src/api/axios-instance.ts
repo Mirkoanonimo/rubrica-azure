@@ -1,7 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import type { AuthResponse } from '@/types/auth';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+// Ottieni l'URL base dall'environment o usa il default per development
+const apiUrl = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api/v1`
+  : 'http://localhost:8000/api/v1';
 
 // Estendiamo il tipo InternalAxiosRequestConfig per includere _retry
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -12,7 +15,7 @@ export const axiosInstance = axios.create({
   baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json' 
+    'Accept': 'application/json'
   },
   withCredentials: true
 });
@@ -29,15 +32,21 @@ axiosInstance.interceptors.request.use(
     const token = getBearerToken();
     if (token) {
       config.headers.Authorization = token;
-      // Debug per verificare che il token venga inviato
-      console.debug('Token presente nella richiesta:', token.substring(0, 20) + '...');
+      // Debug solo in development
+      if (import.meta.env.DEV) {
+        console.debug('Token presente nella richiesta:', token.substring(0, 20) + '...');
+      }
     } else {
-      console.debug('Nessun token presente per la richiesta');
+      if (import.meta.env.DEV) {
+        console.debug('Nessun token presente per la richiesta');
+      }
     }
     return config;
   },
   (error) => {
-    console.error('Errore nell\'interceptor della richiesta:', error);
+    if (import.meta.env.DEV) {
+      console.error('Errore nell\'interceptor della richiesta:', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -49,36 +58,44 @@ axiosInstance.interceptors.response.use(
     if (error instanceof AxiosError && error.config) {
       const originalRequest = error.config as CustomAxiosRequestConfig;
       
-      // Log dettagliato dell'errore
-      console.error('Errore risposta API:', {
-        status: error.response?.status,
-        url: originalRequest.url,
-        method: originalRequest.method,
-        hasToken: !!originalRequest.headers?.Authorization,
-      });
+      // Log dettagliato dell'errore solo in development
+      if (import.meta.env.DEV) {
+        console.error('Errore risposta API:', {
+          status: error.response?.status,
+          url: originalRequest.url,
+          method: originalRequest.method,
+          hasToken: !!originalRequest.headers?.Authorization,
+        });
+      }
 
       // Se il token è scaduto (401) e non è già un retry
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          console.debug('Tentativo di refresh del token...');
+          if (import.meta.env.DEV) {
+            console.debug('Tentativo di refresh del token...');
+          }
           // Prova a refreshare il token
           const response = await axiosInstance.get<AuthResponse>('/auth/me');
           const { access_token } = response.data;
           
           // Salva il nuovo token
           localStorage.setItem('token', access_token);
-          console.debug('Token refreshato con successo');
-
+          
+          if (import.meta.env.DEV) {
+            console.debug('Token refreshato con successo');
+          }
+          
           // Aggiorna il token nella richiesta originale
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${access_token}`;
           }
-          
           // Riprova la richiesta originale
           return axiosInstance(originalRequest);
         } catch (refreshError) {
-          console.error('Refresh token fallito:', refreshError);
+          if (import.meta.env.DEV) {
+            console.error('Refresh token fallito:', refreshError);
+          }
           // Se il refresh fallisce, pulisci il token e reindirizza al login
           localStorage.removeItem('token');
           window.location.href = '/login';
@@ -88,9 +105,9 @@ axiosInstance.interceptors.response.use(
 
       // Se è un 403 (Forbidden)
       if (error.response?.status === 403) {
-        console.error('Accesso vietato:', error.response?.data);
-        // Potremmo reindirizzare a una pagina di accesso negato
-        // window.location.href = '/access-denied';
+        if (import.meta.env.DEV) {
+          console.error('Accesso vietato:', error.response?.data);
+        }
       }
 
       // Gestione errori generici
@@ -98,7 +115,6 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(new Error(error.response.data.detail));
       }
     }
-
     return Promise.reject(error);
   }
 );
