@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import type { RegisterCredentials } from '@/types/auth';
@@ -23,8 +23,8 @@ const registerSchema = z.object({
   tenant_name: z.string().optional(),
 });
 
-export const RegisterForm = () => {
-  const { register: registerUser } = useAuth();
+export const RegisterForm: React.FC = () => {
+  const { register: registerUser } = useAuthContext();
   const {
     register,
     handleSubmit,
@@ -97,3 +97,5 @@ export const RegisterForm = () => {
     </form>
   );
 };
+
+export default RegisterForm; 

@@ -336,12 +336,20 @@ async def change_password(
 async def read_current_user(
     *,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_auth)
+    current_user_id: int = Depends(require_auth)  # Questo restituisce solo l'ID
 ) -> LoginResponse:
     """
     Restituisce i dati dell'utente corrente e rinnova il token.
     """
     try:
+        # Recupera l'utente dal database usando l'ID
+        current_user = db.query(User).filter(User.id == current_user_id).first()
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Utente non trovato"
+            )
+
         # Crea un nuovo token
         access_token = create_access_token(
             data={"sub": current_user.id},

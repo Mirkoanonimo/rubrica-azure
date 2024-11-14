@@ -27,7 +27,7 @@ app = FastAPI(
 )
 
 # Configurazione CORS sicura
-origins = ["http://localhost:3000"] if settings.ENVIRONMENT == "development" else [settings.FRONTEND_URL]
+origins = ["http://localhost:5173", "http://localhost:3000"] if settings.ENVIRONMENT == "development" else [settings.FRONTEND_URL]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

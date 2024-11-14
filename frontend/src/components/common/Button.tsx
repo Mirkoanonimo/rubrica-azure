@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline';  // aggiungiamo outline
   isLoading?: boolean;
   fullWidth?: boolean;
 }
@@ -21,7 +21,8 @@ export const Button: React.FC<ButtonProps> = ({
   const variants = {
     primary: 'border-transparent text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
     secondary: 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500',
-    danger: 'border-transparent text-white bg-red-600 hover:bg-red-700 focus:ring-red-500'
+    danger: 'border-transparent text-white bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    outline: 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500'  // aggiungiamo lo stile outline
   };
 
   return (

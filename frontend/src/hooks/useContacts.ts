@@ -75,21 +75,27 @@ export const useContacts = (options: UseContactsOptions = {}) => {
 
   // Handler per la creazione di un contatto
   const createContact = useCallback(async (data: ContactCreate) => {
+    console.log('Creating contact with data:', data);
     try {
-      await createMutation.mutateAsync(data);
+      const result = await createMutation.mutateAsync(data);
+      console.log('Create contact result:', result);
       return true;
     } catch (error) {
-      return false;
+      console.error('Create contact error:', error);
+      throw error; // Propaga l'errore invece di ritornare false
     }
   }, [createMutation]);
 
   // Handler per l'aggiornamento di un contatto
   const updateContact = useCallback(async (id: number, data: ContactUpdate) => {
+    console.log('Updating contact with id:', id, 'data:', data);
     try {
-      await updateMutation.mutateAsync({ id, data });
+      const result = await updateMutation.mutateAsync({ id, data });
+      console.log('Update contact result:', result);
       return true;
     } catch (error) {
-      return false;
+      console.error('Update contact error:', error);
+      throw error; // Propaga l'errore invece di ritornare false
     }
   }, [updateMutation]);
 

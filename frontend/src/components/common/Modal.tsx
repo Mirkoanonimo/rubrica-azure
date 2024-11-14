@@ -22,19 +22,29 @@ export const Modal: React.FC<ModalProps> = ({
   preventClose = false,
   hideCloseButton = false
 }) => {
-  // Previene lo scroll del body quando il modal è aperto
+  // Unisce i due useEffect in uno
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      
+      // Gestione tasto ESC
+      const handleEscapeKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !preventClose) {
+          onClose();
+        }
+      };
+      
+      document.addEventListener('keydown', handleEscapeKey);
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+        document.removeEventListener('keydown', handleEscapeKey);
+      };
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [open]);
-
-  if (!open) return null;
+  }, [open, onClose, preventClose]);
 
   // Handler per il click sul backdrop
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -43,22 +53,7 @@ export const Modal: React.FC<ModalProps> = ({
     }
   };
 
-  // Gestione tasto ESC
-  useEffect(() => {
-    const handleEscapeKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !preventClose) {
-        onClose();
-      }
-    };
-
-    if (open) {
-      document.addEventListener('keydown', handleEscapeKey);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [open, onClose, preventClose]);
+  if (!open) return null;
 
   const sizeClasses = {
     sm: 'max-w-sm',
@@ -68,14 +63,14 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 overflow-y-auto"
       aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true"
     >
       {/* Backdrop */}
-      <div 
+      <div
         className={clsx(
           "fixed inset-0 bg-black bg-opacity-50",
           "transition-opacity ease-in-out duration-300",
@@ -83,11 +78,10 @@ export const Modal: React.FC<ModalProps> = ({
         )}
         onClick={handleBackdropClick}
       />
-
       {/* Modal Content */}
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex min-h-full items-center justify-center p-4">
-          <div 
+          <div
             className={clsx(
               "relative bg-white rounded-lg shadow-xl",
               "w-full transform transition-all",
@@ -97,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 
+              <h3
                 className="text-lg font-semibold text-gray-900"
                 id="modal-title"
               >
@@ -112,28 +106,26 @@ export const Modal: React.FC<ModalProps> = ({
                   disabled={preventClose}
                 >
                   <span className="sr-only">Chiudi</span>
-                  <svg 
-                    className="h-6 w-6" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M6 18L18 6M6 6l12 12" 
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 </button>
               )}
             </div>
-
             {/* Body */}
             <div className="p-4">
               {children}
             </div>
-
             {/* Footer */}
             {footerContent && (
               <div className="flex justify-end gap-2 p-4 border-t border-gray-200">

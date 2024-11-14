@@ -1,98 +1,76 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AxiosError } from 'axios';
-import axiosInstance from '@/api/axios-instance';
-import type { 
-  User, 
-  AuthContextType, 
-  LoginCredentials, 
-  RegisterCredentials,
-  AuthResponse 
-} from '@/types/auth';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import type { AuthContextType, LoginCredentials, RegisterCredentials } from '@/types/auth';
 
+// Creazione del contesto con un valore di default undefined
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+// Props per il provider
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const response = await axiosInstance.get<AuthResponse>('/auth/me');
-        setUser(response.data.user);
-      } catch (error) {
-        localStorage.removeItem('token');
-      }
-    }
-    setIsLoading(false);
-  };
-
-  const login = async (credentials: LoginCredentials) => {
-    try {
-      const response = await axiosInstance.post<AuthResponse>('/auth/login', credentials);
-      const { access_token, user } = response.data;
-      
-      localStorage.setItem('token', access_token);
-      setUser(user);
-      navigate('/contacts');
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        throw new Error(error.response?.data?.detail || 'Login failed');
-      }
-      throw error;
-    }
-  };
-
-  const register = async (credentials: RegisterCredentials) => {
-    try {
-      const response = await axiosInstance.post<AuthResponse>('/auth/register', credentials);
-      const { access_token, user } = response.data;
-      
-      localStorage.setItem('token', access_token);
-      setUser(user);
-      navigate('/contacts');
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        throw new Error(error.response?.data?.detail || 'Registration failed');
-      }
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/auth/login');
-  };
-
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-  };
-
-  const value = {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // Utilizzo dell'hook useAuth per la logica di autenticazione
+  const {
     user,
-    isAuthenticated: !!user,
     isLoading,
+    isAuthenticated,
     login,
     register,
     logout,
-    updateUser,
+    updateUser
+  } = useAuth();
+
+  // Valore del contesto che sarà disponibile ai componenti figli
+  const contextValue: AuthContextType = {
+    user,
+    isLoading,
+    isAuthenticated,
+    login: async (credentials: LoginCredentials) => {
+      await login(credentials);
+    },
+    register: async (credentials: RegisterCredentials) => {
+      await register(credentials);
+    },
+    logout,
+    updateUser
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-export function useAuth() {
+// Hook personalizzato per utilizzare il contesto di autenticazione
+export const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuthContext deve essere utilizzato all\'interno di un AuthProvider');
   }
   return context;
+};
+
+// HOC per proteggere le route che richiedono autenticazione
+interface WithAuthProps {
+  children: ReactNode;
+  fallback?: ReactNode;
 }
+
+export const WithAuth: React.FC<WithAuthProps> = ({ children, fallback }) => {
+  const { isAuthenticated, isLoading } = useAuthContext();
+
+  if (isLoading) {
+    return fallback || <div>Caricamento...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  return <>{children}</>;
+};
+
+export default AuthProvider;

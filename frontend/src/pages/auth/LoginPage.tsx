@@ -1,29 +1,40 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { LoginForm } from '@/components/auth/LoginForm';
+import LoginForm from '@/components/auth/LoginForm';
 
-export const LoginPage = () => {
-  return (
-    <div className="container-auth">
-      <div className="max-w-md w-full">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Accedi alla tua Rubrica
+export const LoginPage: React.FC = () => {  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Accedi al tuo account
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Non hai un account?{' '}
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Oppure{' '}
             <Link
               to="/auth/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
+              className="font-medium text-blue-600 hover:text-blue-500"
             >
-              Registrati
+              registra un nuovo account
             </Link>
           </p>
         </div>
 
-        <div className="card mt-8">
+        <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <LoginForm />
+        </div>
+
+        <div className="text-center">
+          <Link
+            to="/auth/password-reset"
+            className="font-medium text-sm text-blue-600 hover:text-blue-500"
+          >
+            Password dimenticata?
+          </Link>
         </div>
       </div>
     </div>
   );
 };
+
+export default LoginPage;

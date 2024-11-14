@@ -1,86 +1,120 @@
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '../types/auth';
-import useToast from './useToast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
-import { axiosInstance } from '../api/axios-instance';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { authApi } from '@/api/auth';
+import type { 
+  User, 
+  LoginCredentials, 
+  RegisterCredentials,
+  AuthResponse 
+} from '@/types/auth';
+import { useToast } from '@/hooks/useToast';
 
 export const useAuth = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Query per ottenere i dati dell'utente corrente
-  const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ['user'],
-    queryFn: async () => {
-      try {
-        const response = await axiosInstance.get<AuthResponse>('/auth/me');
-        return response.data.user;
-      } catch (error) {
-        return null;
-      }
-    }
-  });
+  // Funzione per gestire la risposta di autenticazione
+  const handleAuthResponse = useCallback((response: AuthResponse) => {
+    const { access_token, user } = response;
+    localStorage.setItem('token', access_token);
+    setUser(user);
+    setIsAuthenticated(true);
+  }, []);
 
-  // Mutation per il login
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
-      const response = await axiosInstance.post<AuthResponse>('/auth/login', credentials);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      localStorage.setItem('token', data.access_token);
-      queryClient.setQueryData(['user'], data.user);
-      showToast('Login effettuato con successo', 'success');
-      navigate('/contacts');
-    },
-    onError: (error: unknown) => {
-      if (error instanceof AxiosError && error.response?.status === 401) {
-        showToast('Credenziali non valide', 'error');
+  // Verifica lo stato di autenticazione all'avvio
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+          try {
+              setIsLoading(true);  // Aggiunto
+              const response = await authApi.getMe();
+              handleAuthResponse(response);
+          } catch (error) {
+              console.error('InitAuth error:', error);  // Aggiunto
+              localStorage.removeItem('token');
+              setIsAuthenticated(false);
+              setUser(null);
+          } finally {
+              setIsLoading(false);  // Spostato qui
+          }
       } else {
-        showToast('Errore durante il login', 'error');
+          setIsLoading(false);
       }
-    }
-  });
+  };
 
-  // Mutation per la registrazione
-  const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterCredentials) => {
-      const response = await axiosInstance.post<AuthResponse>('/auth/register', credentials);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      localStorage.setItem('token', data.access_token);
-      queryClient.setQueryData(['user'], data.user);
-      showToast('Registrazione effettuata con successo', 'success');
+    initAuth();
+  }, [handleAuthResponse]);
+
+  // Login
+  const login = async (credentials: LoginCredentials) => {
+    try {
+      setIsLoading(true);
+      const response = await authApi.login(credentials);
+      handleAuthResponse(response);
+      
+      // Redirect alla pagina precedente o alla dashboard
+      const from = location.state?.from?.pathname || '/contacts';
+      navigate(from, { replace: true });
+      
+      showToast('Login effettuato con successo', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Errore durante il login';
+      showToast(message, 'error');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Registrazione
+  const register = async (credentials: RegisterCredentials) => {
+    try {
+      setIsLoading(true);
+      const response = await authApi.register(credentials);
+      handleAuthResponse(response);
       navigate('/contacts');
-    },
-    onError: (error: unknown) => {
-      showToast('Errore durante la registrazione', 'error');
-      console.error('Registration error:', error);
+      showToast('Registrazione completata con successo', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Errore durante la registrazione';
+      showToast(message, 'error');
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
 
-  // Funzione di logout
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    queryClient.setQueryData(['user'], null);
-    queryClient.clear();
-    showToast('Logout effettuato con successo', 'success');
-    navigate('/login');
-  }, [queryClient, navigate, showToast]);
+  // Logout
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+      localStorage.removeItem('token');
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/auth/login');
+      showToast('Logout effettuato con successo', 'success');
+    } catch (error) {
+      showToast('Errore durante il logout', 'error');
+    }
+  }, [navigate, showToast]);
+
+  // Aggiornamento dati utente
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+  }, []);
 
   return {
     user,
     isLoading,
-    isAuthenticated: !!user,
-    login: loginMutation.mutate,
-    register: registerMutation.mutate,
+    isAuthenticated,
+    login,
+    register,
     logout,
-    isLoginLoading: loginMutation.isPending,
-    isRegisterLoading: registerMutation.isPending
+    updateUser
   };
 };
 
