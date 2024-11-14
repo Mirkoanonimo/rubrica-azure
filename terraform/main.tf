@@ -37,8 +37,8 @@ resource "azurerm_service_plan" "app_service_plan" {
 }
 
 resource "azurerm_key_vault" "rubrica_vault" {
-  name = "kv-rubrica-${var.environment}-new"
-  location                    = data.azurerm_resource_group.rg_rubrica.location
+name = "kv-rubrica-${formatdate("MMDD", timestamp())}"  
+location                    = data.azurerm_resource_group.rg_rubrica.location
   resource_group_name         = data.azurerm_resource_group.rg_rubrica.name
   enabled_for_disk_encryption = true
   tenant_id                   = data.azurerm_client_config.current.tenant_id
